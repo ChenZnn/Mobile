@@ -9,23 +9,111 @@ class ApiService {
   static const String baseUrl = 'https://yodai.wevox.cloud/'; // Remplacer par votre URL
   final AuthService _authService = AuthService();
 
-  // Récupérer tous les univers
-  Future<List<Universe>> getUniverses(String universeId) async {
-    final token = await _authService.getToken();
+  Future<List<Universe>> getUniverses(String filter) async {
+    try {
+      final token = await _authService.getToken();
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/universes'),
-      headers: {
+      if (token == null) {
+        throw Exception('Token d\'authentification non disponible');
+      }
+
+      print("Token utilisé: $token"); // Pour débogage
+
+      // Création d'une URL avec ou sans paramètre de filtre
+      final Uri uri = Uri.parse('$baseUrl/universes');
+
+      // Options pour la requête
+      final options = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
-      },
-    );
+      };
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Universe.fromJson(json)).toList();
-    } else {
-      throw Exception('Erreur lors de la récupération des univers');
+      // Exécution de la requête
+      final response = await http.get(
+        uri,
+        headers: options,
+      );
+
+      print("Status code: ${response.statusCode}");
+      print("Response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        // Analyse de la réponse
+        final dynamic jsonResponse = json.decode(response.body);
+
+        // S'assurer que nous avons bien une liste
+        List<dynamic> universesData;
+
+        if (jsonResponse is List) {
+          universesData = jsonResponse;
+        } else if (jsonResponse is Map && jsonResponse.containsKey('universes')) {
+          universesData = jsonResponse['universes'];
+        } else {
+          print("Format de réponse inattendu: $jsonResponse");
+          throw Exception('Format de réponse inattendu');
+        }
+
+        // Conversion en objets Universe
+        return universesData.map((data) => Universe.fromJson(data)).toList();
+      } else {
+        throw Exception('Erreur lors de la récupération des univers: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      print("Exception dans getUniverses: $e");
+      throw Exception('Erreur lors de la récupération des univers: $e');
+    }
+  }
+
+  /// Récupère les détails d'un univers spécifique par son ID.
+  Future<Universe> getUniverse(String universeId) async {
+    try {
+      final token = await _authService.getToken();
+
+      if (token == null) {
+        throw Exception('Token d\'authentification non disponible');
+      }
+
+      print("Récupération de l'univers avec ID: $universeId");
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/universes/$universeId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print("Status code: ${response.statusCode}");
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic jsonResponse = json.decode(response.body);
+
+        // Gestion des différents formats possibles de réponse
+        Map<String, dynamic> universeData;
+
+        if (jsonResponse is Map<String, dynamic>) {
+          if (jsonResponse.containsKey('universe')) {
+            universeData = jsonResponse['universe'];
+          } else if (jsonResponse.containsKey('data')) {
+            universeData = jsonResponse['data'];
+          } else {
+            universeData = jsonResponse;
+          }
+        } else {
+          print("Format de réponse inattendu: $jsonResponse");
+          throw Exception('Format de réponse inattendu pour l\'univers');
+        }
+
+        print("Données de l'univers: $universeData");
+
+        return Universe.fromJson(universeData);
+      } else {
+        print("Erreur: ${response.statusCode} - ${response.body}");
+        throw Exception('Erreur lors de la récupération de l\'univers: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Exception dans getUniverse: $e");
+      rethrow; // Propagation de l'erreur pour qu'elle puisse être traitée par l'appelant
     }
   }
 
@@ -104,7 +192,7 @@ class ApiService {
   }
 
   // Supprimer un personnage
-  Future<void> deleteCharacter(String characterId) async {
+  Future<void> deleteCharacter(int characterId) async {
     final token = await _authService.getToken();
 
     final response = await http.delete(

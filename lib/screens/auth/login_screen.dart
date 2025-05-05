@@ -10,14 +10,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController(); // Changé de email à username
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   final AuthService _authService = AuthService();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose(); // Mise à jour du nom du contrôleur
     _passwordController.dispose();
     super.dispose();
   }
@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       try {
         await _authService.login(
-          _emailController.text,
+          _usernameController.text, // Utilisez le username au lieu de l'email
           _passwordController.text,
         );
 
@@ -66,20 +66,17 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TextFormField(
-                controller: _emailController,
+                controller: _usernameController, // Mise à jour du nom du contrôleur
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Nom d\'utilisateur', // Changé de 'Email' à 'Nom d'utilisateur'
                   border: OutlineInputBorder(),
                 ),
-                keyboardType: TextInputType.emailAddress,
+                keyboardType: TextInputType.text, // Changé à text au lieu de emailAddress
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer votre email';
+                    return 'Veuillez entrer votre nom d\'utilisateur'; // Message mis à jour
                   }
-                  if (!value.contains('@')) {
-                    return 'Veuillez entrer un email valide';
-                  }
-                  return null;
+                  return null; // Suppression de la validation d'email
                 },
               ),
               SizedBox(height: 16),

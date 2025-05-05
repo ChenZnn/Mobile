@@ -28,7 +28,7 @@ class AuthService {
       final user = User.fromJson(data);
 
       // Connectez l'utilisateur après l'inscription
-      return await login(email, password);
+      return await login(username, password);
     } else {
       final error = json.decode(response.body);
       throw Exception(error['message'] ?? 'Échec de l\'inscription');
@@ -36,34 +36,72 @@ class AuthService {
   }
 
   // Connexion
-  Future<User> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': email,
+  Future<User> login(String username, String password) async {
+    try {
+      final requestBody = json.encode({
+        'username': username,
         'password': password,
-      }),
-    );
+      });
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      // Ajustez ces lignes selon le format réel de réponse de votre API
-      final token = data['token'] ?? data['access_token'];
-      final userJson = data['user'] ?? data;
-      final user = User.fromJson(userJson);
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: requestBody,
+      );
 
-      await _saveToken(token);
-      await _saveUser(user);
-      return user;
-    } else {
-      final error = json.decode(response.body);
-      throw Exception(error['message'] ?? 'Échec de la connexion');
+      // Accepter 200 ET 201 comme des codes de succès
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        // Votre token est déjà dans la réponse
+        final token = data['token'] ?? data['access_token'];
+
+        // Le format de la réponse est différent de ce que vous attendiez
+        // Il n'y a pas de champ 'user' distinct, le token contient les infos utilisateur
+
+        // Vous pouvez soit :
+
+        // Option 1: Décoder le token JWT pour extraire les infos utilisateur
+        // (Le token JWT contient les informations utilisateur dans sa charge utile)
+        final userClaims = _decodeToken(token); // Créez cette méthode
+        final user = User.fromJson(userClaims);
+
+        // Option 2: Faire une requête séparée pour obtenir les informations utilisateur
+        // final user = await getUserInfo(token);
+
+        await _saveToken(token);
+        await _saveUser(user);
+        return user;
+      } else {
+        final error = response.body.isNotEmpty ? json.decode(response.body) : {'message': 'Réponse vide'};
+        throw Exception(error['message'] ?? 'Échec de la connexion (Code: ${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Échec de la connexion: $e');
     }
   }
 
-  // Le reste des méthodes reste inchangé
-  // ...
+// Fonction pour décoder un token JWT
+  Map<String, dynamic> _decodeToken(String token) {
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      throw Exception('Token JWT invalide');
+    }
+
+    // Décoder la partie payload (la deuxième partie du token)
+    final payload = parts[1];
+    String normalized = base64Url.normalize(payload);
+    final decoded = utf8.decode(base64Url.decode(normalized));
+    final Map<String, dynamic> decodedJson = json.decode(decoded);
+
+    // Les données utilisateur sont elles-mêmes encodées en JSON dans le champ "data"
+    if (decodedJson.containsKey('data')) {
+      return json.decode(decodedJson['data']);
+    }
+
+    return decodedJson;
+  }
+
+
 
   // Déconnexion
   Future<void> logout() async {

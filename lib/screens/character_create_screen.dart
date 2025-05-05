@@ -7,8 +7,9 @@ import '../services/api_service.dart';
 
 class CharacterCreateScreen extends StatefulWidget {
   final String universeId;
+  final String universeName;
 
-  CharacterCreateScreen({required this.universeId, required String universeName});
+  CharacterCreateScreen({required this.universeId, required this.universeName});
 
   @override
   _CharacterCreateScreenState createState() => _CharacterCreateScreenState();
@@ -46,8 +47,10 @@ class _CharacterCreateScreenState extends State<CharacterCreateScreen> {
       });
 
       try {
+        // Notez qu'on met 0 comme ID temporaire car l'ID sera attribué par le serveur
+        // Pour un nouveau personnage, il est courant d'utiliser 0 comme ID temporaire pour un entier
         final character = Character(
-          id: '',
+          id: 0, // Modifié de '' à 0 puisque id est maintenant un int
           universeId: widget.universeId,
           name: _nameController.text,
           description: _descriptionController.text,
@@ -62,7 +65,7 @@ class _CharacterCreateScreenState extends State<CharacterCreateScreen> {
         Navigator.pop(context, true);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la création du personnage')),
+          SnackBar(content: Text('Erreur lors de la création du personnage: ${e.toString()}')),
         );
       } finally {
         setState(() {
@@ -74,6 +77,7 @@ class _CharacterCreateScreenState extends State<CharacterCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Le reste du code reste inchangé
     return Scaffold(
       appBar: AppBar(
         title: Text('Créer un personnage'),

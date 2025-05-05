@@ -8,7 +8,7 @@ class AuthService {
   static const String tokenKey = 'auth_token';
   static const String userKey = 'user_data';
 
-  // Inscription
+
   Future<User> register(String username, String email, String password, String firstname, String lastname) async {
     final response = await http.post(
       Uri.parse('$baseUrl/users'),
@@ -22,18 +22,37 @@ class AuthService {
       }),
     );
 
-    if (response.statusCode == 201) {
-      final data = json.decode(response.body);
-      // Ajustez selon le format réel de réponse de votre API
-      final user = User.fromJson(data);
+    print('Status: ${response.statusCode}');
+    print('Corps brut: ${response.body}');
 
-      // Connectez l'utilisateur après l'inscription
-      return await login(username, password);
+    if (response.statusCode == 201) {
+      try {
+        final data = json.decode(response.body);
+        if (data.containsKey('user')) {
+          final user = User.fromJson(data['user']);
+          return await login(username, password);
+        } else {
+          throw Exception('Utilisateur non trouvé dans la réponse');
+        }
+      } catch (e) {
+        throw Exception('Erreur d\'inscription: réponse malformée → ${response.body}');
+      }
     } else {
-      final error = json.decode(response.body);
-      throw Exception(error['message'] ?? 'Échec de l\'inscription');
+      try {
+        final error = json.decode(response.body);
+        // Vous pouvez ajouter ici des vérifications spécifiques pour le message d'erreur
+        if (error['error'] == 'Conflict') {
+          throw Exception('Conflit: L\'email ou le nom d\'utilisateur est déjà utilisé.');
+        }
+        throw Exception(error['message'] ?? 'Échec de l\'inscription');
+      } catch (e) {
+        throw Exception('Erreur d\'inscription: réponse invalide → ${response.body}');
+      }
     }
   }
+
+
+
 
   // Connexion
   Future<User> login(String username, String password) async {

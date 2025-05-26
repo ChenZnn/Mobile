@@ -1,7 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/character.dart';
 import '../services/api_service.dart';
+import 'character_conversations_screen.dart';
 
 class CharacterDetailScreen extends StatefulWidget {
   final Character character;
@@ -21,6 +23,33 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
     super.initState();
     character = widget.character;
   }
+
+  Future<void> _startConversation() async {
+    try {
+      // ⚠️ À adapter avec la bonne méthode pour obtenir l'user ID
+      final int userId = await _apiService.getUserId(); // Tu dois implémenter ça ou le récupérer via ton AuthService
+      final response = await _apiService.createConversation(character.id, userId);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Conversation créée !'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Plus tard, tu pourras naviguer vers l'écran de messages ici
+      // Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(conversationId: response['id'])));
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de la création de la conversation'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
 
   // Fonction pour construire l'URL complète de l'image
   String? _getFullImageUrl() {
@@ -281,21 +310,43 @@ class _CharacterDetailScreenState extends State<CharacterDetailScreen> {
                   ),
 
                   SizedBox(height: 32),
-
-                  // Bouton de suppression
+                  // Ajouté après le bouton "Supprimer"
+                  SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.delete_outline),
-                      label: Text('Supprimer ce personnage'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: BorderSide(color: Colors.red),
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.chat),
+                      label: Text('Discuter avec ${character.name}'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: 16),
                       ),
-                      onPressed: () => _deleteCharacter(context),
+                      onPressed: _startConversation,
                     ),
                   ),
+                  SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.list),
+                      label: Text('Voir les conversations de ${character.name}'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[800],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CharacterConversationsScreen(characterId: character.id),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
                 ],
               ),
             ),

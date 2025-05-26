@@ -51,9 +51,6 @@ class AuthService {
     }
   }
 
-
-
-
   // Connexion
   Future<User> login(String username, String password) async {
     try {

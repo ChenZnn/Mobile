@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models/universe.dart';
 import '../services/api_service.dart';
+import 'character_create_screen.dart';
+import 'character_detail_screen.dart';
 import 'character_list_screen.dart';
 
 class UniverseDetailScreen extends StatefulWidget {
@@ -48,12 +50,10 @@ class _UniverseDetailScreenState extends State<UniverseDetailScreen> {
     }
   }
 
-  // Fonction pour construire l'URL complète de l'image
   String? _getFullImageUrl() {
     if (_universe.imageUrl == null || _universe.imageUrl!.isEmpty) {
       return null;
     }
-
     if (_universe.imageUrl!.startsWith('http')) {
       return _universe.imageUrl;
     } else {
@@ -61,271 +61,387 @@ class _UniverseDetailScreenState extends State<UniverseDetailScreen> {
     }
   }
 
+  String? _getCharacterImageUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return null;
+    }
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    } else {
+      return "https://yodai.wevox.cloud/image_data/$imageUrl";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(title: Text('Chargement...')),
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final String? fullImageUrl = _getFullImageUrl();
-
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // AppBar avec l'image en arrière-plan
-          SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                _universe.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(0, 1),
-                      blurRadius: 3,
-                      color: Colors.black.withOpacity(0.5),
-                    ),
-                  ],
-                ),
-              ),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Image avec Hero animation pour la transition
-                  Hero(
-                    tag: 'universe_image_${_universe.id}',
-                    child: fullImageUrl != null
-                        ? CachedNetworkImage(
-                      imageUrl: fullImageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey.shade200,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey.shade300,
-                        child: Icon(
-                          Icons.image_not_supported,
-                          size: 50,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    )
-                        : Container(
-                      color: Colors.grey.shade300,
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: 50,
-                        color: Colors.grey.shade700,
-                      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : CustomScrollView(
+              slivers: [
+                _buildSliverAppBar(),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDescriptionSection(),
+                        SizedBox(height: 24),
+                        _buildCharactersSection(),
+                      ],
                     ),
                   ),
-                  // Dégradé pour améliorer la lisibilité du titre
-                  Container(
+                ),
+              ],
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CharacterListScreen(
+                universeId: widget.universeId,
+                universeName: _universe.name,
+              ),
+            ),
+          ).then((_) => _loadUniverseDetails());
+        },
+        child: Icon(Icons.people),
+        backgroundColor: Color(0xFF6A1B9A),
+        tooltip: 'Voir les personnages',
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar() {
+    return SliverAppBar(
+      expandedHeight: 250,
+      pinned: true,
+      flexibleSpace: FlexibleSpaceBar(
+        title: Text(
+          _universe.name,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            shadows: [
+              Shadow(
+                blurRadius: 4,
+                color: Colors.black.withOpacity(0.5),
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+        ),
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Image de fond
+            _universe.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: _getFullImageUrl() ?? '',
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[300],
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[300],
+                      child: Icon(Icons.public, size: 50, color: Colors.grey[600]),
+                    ),
+                  )
+                : Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.7),
+                          Color(0xFF6A1B9A),
+                          Color(0xFF4A148C),
                         ],
-                        stops: [0.6, 1.0],
                       ),
                     ),
+                    child: Icon(Icons.public, size: 80, color: Colors.white.withOpacity(0.5)),
                   ),
-                ],
+            // Dégradé pour améliorer la lisibilité du texte
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.7),
+                    ],
+                  ),
+                ),
               ),
             ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Modification non implémentée')),
-                  );
-                },
-              ),
-            ],
-          ),
-          // Contenu
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Date de création avec style amélioré
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Créé le ${_universe.createdAt?.day}/${_universe.createdAt?.month}/${_universe.createdAt?.year}',
-                      style: TextStyle(
-                        color: Colors.blue[800],
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+          ],
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.edit),
+          onPressed: () {
+            // Implémenter la modification de l'univers
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Fonctionnalité à venir')),
+            );
+          },
+          tooltip: 'Modifier',
+        ),
+        IconButton(
+          icon: Icon(Icons.delete),
+          onPressed: _confirmDelete,
+          tooltip: 'Supprimer',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSection() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFF6A1B9A)),
+                SizedBox(width: 8),
+                Text(
+                  'Description',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF6A1B9A),
                   ),
-                  SizedBox(height: 24),
-                  // Description avec style amélioré
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Description',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: Colors.blue[800],
-                          ),
-                        ),
-                        Divider(),
-                        SizedBox(height: 8),
-                        Text(
-                          _universe.description,
-                          style: TextStyle(
-                            fontSize: 16,
-                            height: 1.5,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 32),
-                  // Boutons d'action
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: Icon(Icons.people),
-                      label: Text('Voir les personnages'),
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CharacterListScreen(
-                              universeId: _universe.id,
-                              universeName: _universe.name,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.delete_outline),
-                      label: Text('Supprimer cet univers'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: BorderSide(color: Colors.red),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        _showDeleteConfirmationDialog();
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 24), // Espace en bas
-                ],
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Text(
+              _universe.description ?? 'Aucune description disponible.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  void _showDeleteConfirmationDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirmer la suppression'),
-          content: Text(
-            'Êtes-vous sûr de vouloir supprimer l\'univers "${_universe.name}" ? Cette action est irréversible et supprimera également tous les personnages associés.',
-          ),
-          actions: [
-            TextButton(
-              child: Text('Annuler'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text(
-                'Supprimer',
-                style: TextStyle(color: Colors.red),
+  Widget _buildCharactersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Personnages',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF6A1B9A),
               ),
-              onPressed: () async {
-                Navigator.of(context).pop();
-                try {
-                  await _apiService.deleteUniverse(_universe.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Univers supprimé avec succès'),
-                      backgroundColor: Colors.green,
+            ),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CharacterListScreen(
+                      universeId: widget.universeId,
+                      universeName: _universe.name,
                     ),
-                  );
-                  Navigator.of(context).pop(true); // Retour avec mise à jour
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Erreur: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                  ),
+                ).then((_) => _loadUniverseDetails());
               },
+              icon: Icon(Icons.arrow_forward),
+              label: Text('Voir tous'),
+              style: TextButton.styleFrom(
+                foregroundColor: Color(0xFF6A1B9A),
+              ),
             ),
           ],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        ),
+        SizedBox(height: 12),
+        Container(
+          height: 200,
+          child: FutureBuilder(
+            future: _apiService.getCharacters(widget.universeId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Erreur lors du chargement des personnages',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                );
+              } else if (!snapshot.hasData || (snapshot.data as List).isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.person_off,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Aucun personnage',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CharacterCreateScreen(
+                                universeId: widget.universeId,
+                                universeName: _universe.name,
+                              ),
+                            ),
+                          ).then((_) => setState(() {}));
+                        },
+                        icon: Icon(Icons.add),
+                        label: Text('Créer un personnage'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF6A1B9A),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              } else {
+                final characters = snapshot.data as List;
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: characters.length,
+                  itemBuilder: (context, index) {
+                    final character = characters[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CharacterDetailScreen(
+                              character: character,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 150,
+                        margin: EdgeInsets.only(right: 16),
+                        child: Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: character.imageUrl != null
+                                    ? // Dans la partie qui affiche les personnages
+                                        CachedNetworkImage(
+                                          imageUrl: _getCharacterImageUrl(character.imageUrl) ?? '',
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => Container(
+                                            color: Colors.grey[300],
+                                            child: Center(child: CircularProgressIndicator()),
+                                          ),
+                                          errorWidget: (context, url, error) => Container(
+                                            color: Colors.grey[300],
+                                            child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
+                                          ),
+                                        )
+                                    : Container(
+                                        color: Colors.grey[200],
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 50,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.all(8),
+                                child: Text(
+                                  character.name,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+            },
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Supprimer l\'univers'),
+        content: Text('Êtes-vous sûr de vouloir supprimer cet univers ? Cette action est irréversible.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _apiService.deleteUniverse(widget.universeId);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Univers supprimé avec succès')),
+                );
+                Navigator.pop(context, true);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erreur lors de la suppression: ${e.toString()}')),
+                );
+              }
+            },
+            child: Text('Supprimer'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

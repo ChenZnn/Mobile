@@ -1,4 +1,4 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
   import 'package:cached_network_image/cached_network_image.dart';
   import '../models/universe.dart';
   import '../services/api_service.dart';
@@ -140,7 +140,7 @@
         appBar: AppBar(
           title: Text(
             'Mes Univers',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
           ),
           elevation: 0,
           actions: [
@@ -172,19 +172,35 @@
               tooltip: 'Déconnexion',
             ),
           ],
+          backgroundColor: Color(0xFF6A1B9A),
         ),
-        body: RefreshIndicator(
-          onRefresh: _loadUniverses,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF6A1B9A).withOpacity(0.8),
+                Color(0xFF4A148C),
+              ],
+            ),
+          ),
           child: _isLoading
-              ? Center(child: CircularProgressIndicator())
-              : _universes.isEmpty
-              ? _buildEmptyState()
-              : _buildUniverseGridView(),
+              ? Center(child: CircularProgressIndicator(color: Colors.white))
+              : RefreshIndicator(
+                onRefresh: _loadUniverses,
+                color: Color(0xFF6A1B9A),
+                child: _universes.isEmpty
+                    ? _buildEmptyState()
+                    : _buildUniverseGrid(),
+              ),
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          icon: Icon(Icons.add),
-          label: Text('Créer un univers'),
+        floatingActionButton: FloatingActionButton(
           onPressed: _navigateToCreate,
+          child: Icon(Icons.add),
+          backgroundColor: Color(0xFF6A1B9A),
+          elevation: 4,
+          tooltip: 'Créer un univers',
         ),
       );
     }
@@ -195,9 +211,9 @@
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.category_outlined,
+              Icons.public_off,
               size: 80,
-              color: Colors.grey,
+              color: Colors.white70,
             ),
             SizedBox(height: 16),
             Text(
@@ -205,182 +221,139 @@
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade700,
+                color: Colors.white,
               ),
             ),
             SizedBox(height: 8),
             Text(
-              'Créez votre premier univers pour commencer',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              'Créez votre premier univers en appuyant sur le bouton +',
               textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
             ),
             SizedBox(height: 24),
             ElevatedButton.icon(
+              onPressed: _navigateToCreate,
               icon: Icon(Icons.add),
               label: Text('Créer un univers'),
               style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                backgroundColor: Colors.white,
+                foregroundColor: Color(0xFF6A1B9A),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
-                onPressed: _navigateToCreate,
               ),
+            ),
             ],
           ),
         );
       }
 
-    Widget _buildUniverseGridView() {
-      // Calculer le nombre de colonnes en fonction de la largeur d'écran
-      double screenWidth = MediaQuery.of(context).size.width;
-      int crossAxisCount = 2; // Par défaut pour mobile
-
-      // Ajustement adaptatif du nombre de colonnes
-      if (screenWidth > 1200) {
-        crossAxisCount = 5; // Pour très grands écrans
-      } else if (screenWidth > 900) {
-        crossAxisCount = 4; // Pour grands écrans
-      } else if (screenWidth > 600) {
-        crossAxisCount = 3; // Pour tablettes et écrans moyens
-      }
-
+    Widget _buildUniverseGrid() {
       return GridView.builder(
         padding: EdgeInsets.all(16),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          childAspectRatio: 0.85, // Ratio ajusté
+          crossAxisCount: 2,
+          childAspectRatio: 0.75,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
         itemCount: _universes.length,
         itemBuilder: (context, index) {
-          return _buildUniverseCard(_universes[index]);
+          final universe = _universes[index];
+          return _buildUniverseCard(universe);
         },
       );
     }
 
-    Widget _buildUniverseCard(Universe universe) {
-      // Construction de l'URL complète
-      String? fullImageUrl;
-      if (universe.imageUrl != null && universe.imageUrl!.isNotEmpty) {
-        if (universe.imageUrl!.startsWith('http')) {
-          fullImageUrl = universe.imageUrl;
-        } else {
-          fullImageUrl = "https://yodai.wevox.cloud/image_data/${universe.imageUrl}";
-        }
+    String? _getFullImageUrl(String? imageUrl) {
+      if (imageUrl == null || imageUrl.isEmpty) {
+        return null;
       }
+      if (imageUrl.startsWith('http')) {
+        return imageUrl;
+      } else {
+        return "https://yodai.wevox.cloud/image_data/$imageUrl";
+      }
+    }
 
-      return Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: InkWell(
-          onTap: () => _navigateToDetail(universe),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    Widget _buildUniverseCard(Universe universe) {
+      return GestureDetector(
+        onTap: () => _navigateToDetail(universe),
+        child: Card(
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Image avec overlay pour le titre
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Hero(
-                      tag: 'universe_image_${universe.id}',
-                      child: fullImageUrl != null
-                          ? CachedNetworkImage(
-                        imageUrl: fullImageUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey.shade200,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: Center(
-                              child: Icon(
-                                Icons.image_not_supported_outlined,
-                                size: 30,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                          : Container(
-                        color: Colors.grey.shade200,
-                        child: Center(
-                          child: Icon(
-                            Icons.photo_library,
-                            size: 40,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ),
+              // Image de fond
+              universe.imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: _getFullImageUrl(universe.imageUrl) ?? '',
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[300],
+                      child: Center(child: CircularProgressIndicator()),
                     ),
-                    // Dégradé pour améliorer la lisibilité du titre
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 60,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withOpacity(0.7),
-                            ],
-                          ),
-                        ),
-                      ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[300],
+                      child: Icon(Icons.public, size: 50, color: Colors.grey[600]),
                     ),
-                    // Nom de l'univers sur l'image
-                    Positioned(
-                      bottom: 8,
-                      left: 12,
-                      right: 12,
-                      child: Text(
+                  )
+                : Container(
+                    color: Colors.deepPurple[100],
+                    child: Icon(Icons.public, size: 50, color: Colors.deepPurple[300]),
+                  ),
+              // Dégradé pour améliorer la lisibilité du texte
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Informations de l'univers
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         universe.name,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          shadows: [
-                            Shadow(
-                              offset: Offset(0, 1),
-                              blurRadius: 2,
-                              color: Colors.black.withOpacity(0.5),
-                            ),
-                          ],
+                          fontSize: 18,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              // Description compact en bas
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Text(
-                  universe.description,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade800,
+                      SizedBox(height: 4),
+                      Text(
+                        universe.description ?? 'Aucune description',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

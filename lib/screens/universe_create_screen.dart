@@ -69,8 +69,8 @@ class _UniverseCreateScreenState extends State<UniverseCreateScreen> {
       final universe = Universe(
         id: '', // Sera généré par l'API
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        imageUrl: null, // Sera mis à jour après upload
+        description: '', // Description vide par défaut
+        imageUrl: null, // Sera mis à jour après upload si nécessaire
         creatorId: '', createdAt: null, // Sera défini par l'API
       );
 
@@ -107,95 +107,128 @@ class _UniverseCreateScreenState extends State<UniverseCreateScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Créer un univers'),
+        backgroundColor: Color(0xFF6A1B9A),
+        elevation: 0,
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              GestureDetector(
-                onTap: _showImageSourceDialog,
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                    image: _imageFile != null
-                        ? DecorationImage(
-                      image: FileImage(_imageFile!),
-                      fit: BoxFit.cover,
-                    )
-                        : null,
-                  ),
-                  child: _imageFile == null
-                      ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.add_photo_alternate,
-                        size: 50,
-                        color: Colors.grey[700],
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Ajouter une image (optionnel)',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  )
-                      : null,
-                ),
-              ),
-              SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Nom de l\'univers',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Veuillez entrer un nom';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
-                maxLines: 5,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Veuillez entrer une description';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _createUniverse,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    'Créer l\'univers',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF6A1B9A).withOpacity(0.8),
+              Color(0xFF4A148C),
             ],
           ),
         ),
+        child: _isLoading
+            ? Center(child: CircularProgressIndicator(color: Colors.white))
+            : SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Nouvel Univers',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF6A1B9A),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 24),
+                          GestureDetector(
+                            onTap: _showImageSourceDialog,
+                            child: Container(
+                              height: 200,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(12),
+                                image: _imageFile != null
+                                    ? DecorationImage(
+                                        image: FileImage(_imageFile!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: _imageFile == null
+                                  ? Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate,
+                                          size: 50,
+                                          color: Colors.grey[600],
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Ajouter une image (optionnel)',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          SizedBox(height: 24),
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: 'Nom de l\'univers',
+                              hintText: 'Ex: Monde Fantastique',
+                              prefixIcon: Icon(Icons.public, color: Color(0xFF6A1B9A)),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF6A1B9A), width: 2),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Veuillez entrer un nom pour votre univers';
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 24),
+                          ElevatedButton(
+                            onPressed: _createUniverse,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF6A1B9A),
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Créer l\'univers',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }
